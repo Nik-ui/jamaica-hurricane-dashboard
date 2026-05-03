@@ -227,8 +227,8 @@
       <input id="slider" type="range" min="0" max="0" value="0">
     </div>
     <div class="layerControl">
-      <label><input id="housingToggle" type="checkbox"> Housing exposure layer</label>
-      <label><input id="peopleToggle" type="checkbox"> Population exposure layer</label>
+      <label><input id="housingToggle" type="checkbox" checked> Housing exposure layer</label>
+      <label><input id="peopleToggle" type="checkbox" checked> Population exposure layer</label>
     </div>
     <div class="legend">
       <div class="legendRow"><span class="swatch" style="background:#7b1e2b"></span>Very High exposure</div>
@@ -370,9 +370,9 @@ for (const feature of impactGeojson.features) {
   });
 }
 
-const housingLayer = group({id: "housingLayer", opacity: "0"});
-const peopleLayer = group({id: "peopleLayer", opacity: "0"});
-const settlementLabelLayer = group({id: "settlementLabelLayer", opacity: "0"});
+const housingLayer = group({id: "housingLayer", opacity: "1"});
+const peopleLayer = group({id: "peopleLayer", opacity: "1"});
+const settlementLabelLayer = group({id: "settlementLabelLayer", opacity: "1"});
 
 for (const place of settlements) {
   const [baseX, baseY] = project(place.lon, place.lat);
