@@ -96,17 +96,15 @@
     .pathObserved {
       fill: none;
       stroke: var(--track);
-      stroke-width: 2.1;
-      opacity: 0.82;
+      stroke-width: 2.5;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
     .pathForecast {
       fill: none;
       stroke: var(--forecast);
-      stroke-width: 2.1;
+      stroke-width: 2.5;
       stroke-dasharray: 7 7;
-      opacity: 0.88;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
@@ -141,17 +139,17 @@
     }
     .parish {
       stroke: #34444d;
-      stroke-width: 0.9;
+      stroke-width: 0.7;
       vector-effect: non-scaling-stroke;
     }
     .label {
-      font-size: 12px;
+      font-size: 10px;
       fill: #24333b;
       pointer-events: none;
       text-anchor: middle;
       paint-order: stroke;
       stroke: rgba(255,255,255,0.78);
-      stroke-width: 4px;
+      stroke-width: 3px;
       stroke-linejoin: round;
     }
     .oceanLabel {
@@ -219,13 +217,15 @@ const H = 720;
 const PAD = 70;
 let timer = null;
 
+const forecastFocus = forecast.filter(d => d.lat <= 21.8 && d.lon >= -76.4);
+const allPoints = observed.concat(forecastFocus).map(d => [d.lon, d.lat]);
 const polygonPoints = [];
 for (const f of impactGeojson.features) collectCoords(f.geometry.coordinates, polygonPoints);
-const forecastFocus = forecast.filter(d => d.lat <= 20.95 && d.lon >= -76.2);
-const minLon = Math.min(...polygonPoints.map(d => d[0])) - 0.72;
-const maxLon = Math.max(...polygonPoints.map(d => d[0])) + 0.42;
-const minLat = Math.min(...polygonPoints.map(d => d[1])) - 0.92;
-const maxLat = Math.max(...polygonPoints.map(d => d[1])) + 0.95;
+const coords = allPoints.concat(polygonPoints);
+const minLon = Math.min(...coords.map(d => d[0])) - 0.25;
+const maxLon = Math.max(...coords.map(d => d[0])) + 0.25;
+const minLat = Math.min(...coords.map(d => d[1])) - 0.25;
+const maxLat = Math.max(...coords.map(d => d[1])) + 0.25;
 
 function collectCoords(coords, out) {
   if (typeof coords[0] === "number") {
@@ -236,8 +236,8 @@ function collectCoords(coords, out) {
 }
 
 function project(lon, lat) {
-  const x = 50 + ((lon - minLon) / (maxLon - minLon)) * (W - 120);
-  const y = 34 + (1 - ((lat - minLat) / (maxLat - minLat))) * (H - 92);
+  const x = PAD + ((lon - minLon) / (maxLon - minLon)) * (W - PAD * 2);
+  const y = H - PAD - ((lat - minLat) / (maxLat - minLat)) * (H - PAD * 2);
   return [x, y];
 }
 
@@ -325,8 +325,10 @@ originBox.innerHTML = `
 for (const feature of impactGeojson.features) {
   const [x, y] = centroid(feature);
   const name = feature.properties.parish || feature.properties.shapeName || "";
-  const text = el("text", {x, y, class: "label"});
-  text.textContent = name.replace("Saint ", "St. ");
+  if (name.length <= 16) {
+    const text = el("text", {x, y, class: "label"});
+    text.textContent = name;
+  }
 }
 
 el("path", {d: pathFromPoints(observed), class: "pathObserved"});
