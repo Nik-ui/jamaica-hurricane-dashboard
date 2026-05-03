@@ -1,4 +1,86 @@
-<!doctype html>
+import csv
+import json
+from pathlib import Path
+
+BASE = Path(__file__).resolve().parent
+OUTPUT = BASE / "output"
+
+IMPACT = OUTPUT / "impact_parish_scores.csv"
+VALIDATION = OUTPUT / "forecast_validation_against_observed.csv"
+SCENARIOS = OUTPUT / "future_hurricane_scenario_parish_risk.csv"
+DASHBOARD = OUTPUT / "arcgis_vs_analysis_dashboard.html"
+
+
+def read_csv(path):
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def top_rows(rows, key, count=8):
+    return sorted(rows, key=lambda row: float(row[key]), reverse=True)[:count]
+
+
+def scenario_summary(rows):
+    by_scenario = {}
+    for row in rows:
+        scenario = row["scenario"]
+        by_scenario.setdefault(
+            scenario,
+            {
+                "label": row["scenario_label"],
+                "rows": [],
+            },
+        )
+        by_scenario[scenario]["rows"].append(row)
+
+    summary = []
+    for scenario, bundle in by_scenario.items():
+        ranked = top_rows(bundle["rows"], "future_risk_index", 5)
+        summary.append(
+            {
+                "scenario": scenario,
+                "label": bundle["label"],
+                "top": [
+                    {
+                        "parish": row["parish"],
+                        "risk": float(row["future_risk_index"]),
+                        "category": row["future_risk_category"],
+                    }
+                    for row in ranked
+                ],
+            }
+        )
+    return summary
+
+
+def main():
+    impact_rows = read_csv(IMPACT)
+    validation_rows = read_csv(VALIDATION)
+    scenario_rows = read_csv(SCENARIOS)
+
+    data = {
+        "impact": [
+            {
+                "parish": row["parish"],
+                "impact": float(row["impact_index"]),
+                "category": row["impact_category"],
+                "distance": float(row["nearest_track_dist_km"]),
+                "wind": float(row["nearest_wind_kt"]),
+            }
+            for row in top_rows(impact_rows, "impact_index", 14)
+        ],
+        "validation": [
+            {
+                "hour": int(row["forecast_hour"]),
+                "error": float(row["track_error_km"]),
+                "wind_error": float(row["wind_error_kt"]),
+            }
+            for row in validation_rows
+        ],
+        "scenarios": scenario_summary(scenario_rows),
+    }
+
+    html = """<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -220,7 +302,7 @@
     </section>
   </main>
 <script>
-const data = {"impact": [{"parish": "Trelawny", "impact": 100.0, "category": "Very High", "distance": 12.11, "wind": 125.0}, {"parish": "Saint James", "impact": 100.0, "category": "Very High", "distance": 32.48, "wind": 145.0}, {"parish": "Hanover", "impact": 100.0, "category": "Very High", "distance": 29.78, "wind": 145.0}, {"parish": "Westmoreland", "impact": 100.0, "category": "Very High", "distance": 24.16, "wind": 160.0}, {"parish": "Saint Elizabeth", "impact": 100.0, "category": "Very High", "distance": 25.79, "wind": 162.0}, {"parish": "Manchester", "impact": 100.0, "category": "Very High", "distance": 56.33, "wind": 162.0}, {"parish": "Saint Ann", "impact": 96.35, "category": "Very High", "distance": 41.81, "wind": 125.0}, {"parish": "Clarendon", "impact": 72.8, "category": "High", "distance": 84.97, "wind": 162.0}, {"parish": "Saint Mary", "impact": 69.48, "category": "High", "distance": 54.03, "wind": 105.0}, {"parish": "Saint Catherine", "impact": 57.27, "category": "Moderate", "distance": 104.17, "wind": 162.0}, {"parish": "Saint Andrew", "impact": 42.21, "category": "Moderate", "distance": 128.59, "wind": 162.0}, {"parish": "Kingston", "impact": 40.65, "category": "Moderate", "distance": 131.59, "wind": 162.0}, {"parish": "Portland", "impact": 37.28, "category": "Low", "distance": 103.84, "wind": 105.0}, {"parish": "Saint Thomas", "impact": 27.94, "category": "Low", "distance": 126.91, "wind": 105.0}], "validation": [{"hour": 3, "error": 35.27, "wind_error": -10.6}, {"hour": 6, "error": 61.85, "wind_error": -16.1}, {"hour": 9, "error": 90.06, "wind_error": -25.7}, {"hour": 12, "error": 121.27, "wind_error": -36.0}, {"hour": 15, "error": 157.77, "wind_error": -48.0}, {"hour": 18, "error": 191.46, "wind_error": -60.0}, {"hour": 21, "error": 224.31, "wind_error": -62.8}, {"hour": 24, "error": 268.26, "wind_error": -66.3}, {"hour": 27, "error": 318.27, "wind_error": -68.9}, {"hour": 30, "error": 381.36, "wind_error": -69.1}, {"hour": 33, "error": 465.44, "wind_error": -66.7}, {"hour": 36, "error": 562.44, "wind_error": -64.1}, {"hour": 39, "error": 668.16, "wind_error": -61.7}, {"hour": 42, "error": 805.1, "wind_error": -59.1}, {"hour": 45, "error": 974.15, "wind_error": -56.7}, {"hour": 48, "error": 1155.66, "wind_error": -55.0}], "scenarios": [{"scenario": "S1_melissa_repeat_corridor", "label": "Melissa-like repeat corridor", "top": [{"parish": "Trelawny", "risk": 100.0, "category": "Extreme"}, {"parish": "Saint James", "risk": 100.0, "category": "Extreme"}, {"parish": "Hanover", "risk": 100.0, "category": "Extreme"}, {"parish": "Westmoreland", "risk": 100.0, "category": "Extreme"}, {"parish": "Saint Elizabeth", "risk": 100.0, "category": "Extreme"}]}, {"scenario": "S2_west_shift_cat5", "label": "50 km west-shifted Category 5 corridor", "top": [{"parish": "Saint James", "risk": 100.0, "category": "Extreme"}, {"parish": "Hanover", "risk": 100.0, "category": "Extreme"}, {"parish": "Westmoreland", "risk": 100.0, "category": "Extreme"}, {"parish": "Trelawny", "risk": 87.85, "category": "Very High"}, {"parish": "Saint Elizabeth", "risk": 84.75, "category": "Very High"}]}, {"scenario": "S3_east_shift_cat5", "label": "50 km east-shifted Category 5 corridor", "top": [{"parish": "Saint Ann", "risk": 100.0, "category": "Extreme"}, {"parish": "Trelawny", "risk": 100.0, "category": "Extreme"}, {"parish": "Saint Mary", "risk": 100.0, "category": "Extreme"}, {"parish": "Saint James", "risk": 100.0, "category": "Extreme"}, {"parish": "Saint Elizabeth", "risk": 100.0, "category": "Extreme"}]}, {"scenario": "S4_melissa_corridor_cat4", "label": "Melissa corridor with Category 4 intensity", "top": [{"parish": "Trelawny", "risk": 100.0, "category": "Extreme"}, {"parish": "Saint James", "risk": 100.0, "category": "Extreme"}, {"parish": "Hanover", "risk": 100.0, "category": "Extreme"}, {"parish": "Westmoreland", "risk": 100.0, "category": "Extreme"}, {"parish": "Saint Elizabeth", "risk": 100.0, "category": "Extreme"}]}, {"scenario": "S5_south_shift_cat5", "label": "35 km south-shifted Category 5 corridor", "top": [{"parish": "Saint Ann", "risk": 100.0, "category": "Extreme"}, {"parish": "Trelawny", "risk": 100.0, "category": "Extreme"}, {"parish": "Westmoreland", "risk": 100.0, "category": "Extreme"}, {"parish": "Saint Elizabeth", "risk": 100.0, "category": "Extreme"}, {"parish": "Manchester", "risk": 100.0, "category": "Extreme"}]}]};
+const data = __DATA__;
 
 for (const button of document.querySelectorAll("button[data-tab]")) {
   button.addEventListener("click", () => {
@@ -303,3 +385,10 @@ renderScenarios();
 </script>
 </body>
 </html>
+"""
+    DASHBOARD.write_text(html.replace("__DATA__", json.dumps(data)), encoding="utf-8")
+    print(f"Wrote {DASHBOARD}")
+
+
+if __name__ == "__main__":
+    main()
