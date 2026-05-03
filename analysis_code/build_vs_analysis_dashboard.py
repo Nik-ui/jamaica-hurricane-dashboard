@@ -276,7 +276,7 @@ def main():
   </header>
   <main>
     <section id="animation" class="active">
-      <iframe src="melissa_arcgis_animation.html?v=clean-dashboard-5" title="Hurricane Melissa animation"></iframe>
+      <iframe src="melissa_arcgis_animation.html?v=track-labels-1" title="Hurricane Melissa animation"></iframe>
     </section>
     <section id="scenarios">
       <iframe src="future_hurricane_scenario_explorer.html?v=settlements-storm-motion-1" title="Future hurricane scenario explorer"></iframe>
