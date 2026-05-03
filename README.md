@@ -11,8 +11,8 @@ https://nik-ui.github.io/jamaica-hurricane-dashboard/
 - `melissa_arcgis_animation.html`: Hurricane Melissa animation and parish impact layer.
 - `future_hurricane_scenario_explorer.html`: future corridor scenario explorer.
 - `analysis_code/`: Python scripts used to generate the GIS analysis outputs.
-- `paper/`: academic manuscript draft with Harvard-style citations.
 
 ## Important note
 
 The forecast and parish impact outputs are research visualisation and exposure-screening products. They are not official meteorological forecasts or official damage assessments.
+
