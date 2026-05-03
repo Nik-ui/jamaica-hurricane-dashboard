@@ -137,37 +137,40 @@
       stroke-linecap: round;
       stroke-linejoin: round;
     }
-    .houseRoof {
-      fill: #8b2635;
-      stroke: #4c1a21;
-      stroke-width: 0.8;
+    .layerControl {
+      display: grid;
+      gap: 7px;
+      border: 1px solid #d6e0e5;
+      border-radius: 8px;
+      padding: 10px;
+      background: #f8fbfc;
+      font-size: 13px;
+    }
+    .layerControl label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .housingPoint {
+      fill: rgba(229, 154, 59, 0.48);
+      stroke: #9b5b16;
+      stroke-width: 1.4;
       vector-effect: non-scaling-stroke;
     }
-    .houseBody {
-      fill: #f6e7c8;
-      stroke: #5f4f3d;
-      stroke-width: 0.8;
-      vector-effect: non-scaling-stroke;
-    }
-    .personHead {
-      fill: #2f5f73;
+    .peoplePoint {
+      fill: rgba(47, 95, 115, 0.42);
       stroke: #173947;
-      stroke-width: 0.6;
-      vector-effect: non-scaling-stroke;
-    }
-    .personBody {
-      stroke: #173947;
-      stroke-width: 2.2;
-      stroke-linecap: round;
+      stroke-width: 1.4;
       vector-effect: non-scaling-stroke;
     }
     .settlementLabel {
       fill: #24333b;
-      font-size: 10px;
+      font-size: 11px;
       text-anchor: middle;
       paint-order: stroke;
-      stroke: rgba(255,255,255,0.82);
-      stroke-width: 3px;
+      stroke: rgba(255,255,255,0.9);
+      stroke-width: 4px;
       stroke-linejoin: round;
       pointer-events: none;
     }
@@ -223,6 +226,10 @@
       <button id="play">Play</button>
       <input id="slider" type="range" min="0" max="0" value="0">
     </div>
+    <div class="layerControl">
+      <label><input id="housingToggle" type="checkbox"> Housing exposure layer</label>
+      <label><input id="peopleToggle" type="checkbox"> Population exposure layer</label>
+    </div>
     <div class="legend">
       <div class="legendRow"><span class="swatch" style="background:#7b1e2b"></span>Very High exposure</div>
       <div class="legendRow"><span class="swatch" style="background:#e07139"></span>High exposure</div>
@@ -231,8 +238,8 @@
       <div class="legendRow"><span class="swatch" style="background:#dce8dc"></span>Very Low exposure</div>
       <div class="legendRow"><span class="swatch" style="background:#1f6f8b"></span>Observed track</div>
       <div class="legendRow"><span class="swatch" style="background:#ad2f45"></span>Forecast track</div>
-      <div class="legendRow"><span class="swatch" style="background:#f6e7c8"></span>Settlements / homes</div>
-      <div class="legendRow"><span class="swatch" style="background:#2f5f73"></span>People / shelters</div>
+      <div class="legendRow"><span class="swatch" style="background:#e59a3b"></span>Housing exposure</div>
+      <div class="legendRow"><span class="swatch" style="background:#2f5f73"></span>Population exposure</div>
     </div>
     <div class="meta">The forecast is a simple trend model for research visualization, not an official meteorological forecast.</div>
   </aside>
@@ -248,6 +255,8 @@ const slider = document.getElementById("slider");
 const play = document.getElementById("play");
 const readout = document.getElementById("readout");
 const originBox = document.getElementById("originBox");
+const housingToggle = document.getElementById("housingToggle");
+const peopleToggle = document.getElementById("peopleToggle");
 const W = 1000;
 const H = 720;
 const PAD = 70;
@@ -255,13 +264,14 @@ let timer = null;
 
 const forecastFocus = forecast.filter(d => d.lat <= 21.8 && d.lon >= -76.4);
 const settlements = [
-  {name: "Montego Bay", lon: -77.92, lat: 18.47, houses: 3, people: 2},
-  {name: "Savanna-la-Mar", lon: -78.13, lat: 18.22, houses: 3, people: 2},
-  {name: "Black River", lon: -77.85, lat: 18.03, houses: 2, people: 2},
-  {name: "Mandeville", lon: -77.50, lat: 18.03, houses: 3, people: 3},
-  {name: "Spanish Town", lon: -76.95, lat: 17.99, houses: 2, people: 3},
-  {name: "Kingston", lon: -76.79, lat: 17.98, houses: 4, people: 4},
-  {name: "Port Antonio", lon: -76.45, lat: 18.18, houses: 2, people: 2}
+  {name: "Montego Bay", lon: -77.92, lat: 18.47, housing: 78, people: 72},
+  {name: "Savanna-la-Mar", lon: -78.13, lat: 18.22, housing: 64, people: 58},
+  {name: "Black River", lon: -77.85, lat: 18.03, housing: 42, people: 38},
+  {name: "Mandeville", lon: -77.50, lat: 18.03, housing: 70, people: 66},
+  {name: "May Pen", lon: -77.25, lat: 17.97, housing: 68, people: 74},
+  {name: "Spanish Town", lon: -76.95, lat: 17.99, housing: 86, people: 92},
+  {name: "Kingston", lon: -76.79, lat: 17.98, housing: 96, people: 100},
+  {name: "Port Antonio", lon: -76.45, lat: 18.18, housing: 44, people: 40}
 ];
 const allPoints = observed.concat(forecastFocus).map(d => [d.lon, d.lat]);
 const polygonPoints = [];
@@ -340,24 +350,6 @@ function child(parent, name, attrs = {}) {
   return node;
 }
 
-function drawHouse(x, y, scale = 1) {
-  const g = group({transform: `translate(${x},${y}) scale(${scale})`});
-  child(g, "polygon", {points: "-8,0 0,-7 8,0", class: "houseRoof"});
-  child(g, "rect", {x: -6, y: 0, width: 12, height: 9, rx: 1, class: "houseBody"});
-  child(g, "rect", {x: -1.8, y: 3, width: 3.6, height: 6, fill: "#8b6b4e"});
-  return g;
-}
-
-function drawPerson(x, y, scale = 1) {
-  const g = group({transform: `translate(${x},${y}) scale(${scale})`});
-  child(g, "circle", {cx: 0, cy: -5, r: 3, class: "personHead"});
-  child(g, "line", {x1: 0, y1: -1, x2: 0, y2: 7, class: "personBody"});
-  child(g, "line", {x1: -5, y1: 2, x2: 5, y2: 2, class: "personBody"});
-  child(g, "line", {x1: 0, y1: 7, x2: -4, y2: 13, class: "personBody"});
-  child(g, "line", {x1: 0, y1: 7, x2: 4, y2: 13, class: "personBody"});
-  return g;
-}
-
 el("rect", {x: 0, y: 0, width: W, height: H, fill: "#d9ecf2"});
 
 const [caribbeanX, caribbeanY] = project(-77.2, 17.05);
@@ -378,17 +370,29 @@ for (const feature of impactGeojson.features) {
   });
 }
 
+const housingLayer = group({id: "housingLayer", opacity: "0"});
+const peopleLayer = group({id: "peopleLayer", opacity: "0"});
+const settlementLabelLayer = group({id: "settlementLabelLayer", opacity: "0"});
+
 for (const place of settlements) {
   const [baseX, baseY] = project(place.lon, place.lat);
-  for (let i = 0; i < place.houses; i++) {
-    drawHouse(baseX + (i - place.houses / 2) * 15, baseY + 14 + (i % 2) * 7, 0.74);
-  }
-  for (let i = 0; i < place.people; i++) {
-    drawPerson(baseX + 18 + i * 9, baseY + 29, 0.45);
-  }
-  const text = el("text", {x: baseX, y: baseY - 8, class: "settlementLabel"});
+  const housingRadius = 6 + place.housing * 0.12;
+  const peopleRadius = 5 + place.people * 0.11;
+  child(housingLayer, "circle", {cx: baseX, cy: baseY, r: housingRadius.toFixed(1), class: "housingPoint"});
+  child(peopleLayer, "circle", {cx: baseX + 9, cy: baseY + 7, r: peopleRadius.toFixed(1), class: "peoplePoint"});
+  const text = child(settlementLabelLayer, "text", {x: baseX, y: baseY - 11, class: "settlementLabel"});
   text.textContent = place.name;
 }
+
+function setLayerVisibility() {
+  housingLayer.setAttribute("opacity", housingToggle.checked ? "1" : "0");
+  peopleLayer.setAttribute("opacity", peopleToggle.checked ? "1" : "0");
+  settlementLabelLayer.setAttribute("opacity", housingToggle.checked || peopleToggle.checked ? "1" : "0");
+}
+
+housingToggle.addEventListener("change", setLayerVisibility);
+peopleToggle.addEventListener("change", setLayerVisibility);
+setLayerVisibility();
 
 originBox.innerHTML = `
   <strong>Storm origin</strong><br>
