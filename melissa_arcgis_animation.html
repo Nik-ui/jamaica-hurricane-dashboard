@@ -154,10 +154,30 @@
     }
     .oceanLabel {
       fill: rgba(35, 72, 86, 0.48);
-      font-size: 23px;
+      font-size: 18px;
       font-weight: 700;
       letter-spacing: 0;
       pointer-events: none;
+    }
+    .trackCallout {
+      font-size: 12px;
+      font-weight: 700;
+      fill: #21323a;
+      pointer-events: none;
+      paint-order: stroke;
+      stroke: rgba(255,255,255,0.86);
+      stroke-width: 4px;
+      stroke-linejoin: round;
+    }
+    .trackCalloutSub {
+      font-size: 10px;
+      font-weight: 600;
+      fill: #40545d;
+      pointer-events: none;
+      paint-order: stroke;
+      stroke: rgba(255,255,255,0.86);
+      stroke-width: 3px;
+      stroke-linejoin: round;
     }
     .originBox {
       border: 1px solid #d6e0e5;
@@ -195,8 +215,8 @@
       <div class="legendRow"><span class="swatch" style="background:#f2c94c"></span>Moderate exposure</div>
       <div class="legendRow"><span class="swatch" style="background:#8bc6a1"></span>Low exposure</div>
       <div class="legendRow"><span class="swatch" style="background:#dce8dc"></span>Very Low exposure</div>
-      <div class="legendRow"><span class="swatch" style="background:#1f6f8b"></span>Observed track</div>
-      <div class="legendRow"><span class="swatch" style="background:#ad2f45"></span>Forecast track</div>
+      <div class="legendRow"><span class="swatch" style="background:#1f6f8b"></span>Observed storm movement</div>
+      <div class="legendRow"><span class="swatch" style="background:#ad2f45"></span>48-hour model forecast track</div>
     </div>
     <div class="meta">The forecast is a simple trend model for research visualization, not an official meteorological forecast.</div>
   </aside>
@@ -301,7 +321,7 @@ const [caribbeanX, caribbeanY] = project(-77.2, 17.05);
 const caribbean = el("text", {x: caribbeanX, y: caribbeanY, class: "oceanLabel"});
 caribbean.textContent = "Caribbean Sea";
 
-const [atlanticX, atlanticY] = project(-75.1, 20.95);
+const [atlanticX, atlanticY] = project(-74.55, 21.35);
 const atlantic = el("text", {x: atlanticX, y: atlanticY, class: "oceanLabel"});
 atlantic.textContent = "Atlantic Ocean";
 
@@ -333,6 +353,20 @@ for (const feature of impactGeojson.features) {
 
 el("path", {d: pathFromPoints(observed), class: "pathObserved"});
 el("path", {d: pathFromPoints(forecastFocus), class: "pathForecast"});
+
+const observedCalloutAnchor = observed[Math.max(0, observed.length - 5)];
+const [obsCalloutX, obsCalloutY] = project(observedCalloutAnchor.lon, observedCalloutAnchor.lat);
+const observedCallout = el("text", {x: obsCalloutX + 18, y: obsCalloutY - 12, class: "trackCallout"});
+observedCallout.textContent = "Observed storm movement";
+
+if (forecastFocus.length) {
+  const forecastCalloutAnchor = forecastFocus[Math.min(2, forecastFocus.length - 1)];
+  const [fcCalloutX, fcCalloutY] = project(forecastCalloutAnchor.lon, forecastCalloutAnchor.lat);
+  const forecastCallout = el("text", {x: fcCalloutX + 18, y: fcCalloutY - 16, class: "trackCallout"});
+  forecastCallout.textContent = "48-hour model forecast track";
+  const forecastSub = el("text", {x: fcCalloutX + 18, y: fcCalloutY + 1, class: "trackCalloutSub"});
+  forecastSub.textContent = "dashed red line; research visualization, not official forecast";
+}
 
 for (const f of forecastFocus) {
   const [x, y] = project(f.lon, f.lat);
