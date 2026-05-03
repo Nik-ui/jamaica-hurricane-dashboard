@@ -123,6 +123,54 @@
       stroke: rgba(31, 111, 139, 0.35);
       stroke-width: 1;
     }
+    .stormBand {
+      fill: none;
+      stroke: rgba(15, 79, 103, 0.55);
+      stroke-width: 3;
+      stroke-linecap: round;
+      pointer-events: none;
+    }
+    .activeTrail {
+      fill: none;
+      stroke: rgba(31, 111, 139, 0.42);
+      stroke-width: 7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .houseRoof {
+      fill: #8b2635;
+      stroke: #4c1a21;
+      stroke-width: 0.8;
+      vector-effect: non-scaling-stroke;
+    }
+    .houseBody {
+      fill: #f6e7c8;
+      stroke: #5f4f3d;
+      stroke-width: 0.8;
+      vector-effect: non-scaling-stroke;
+    }
+    .personHead {
+      fill: #2f5f73;
+      stroke: #173947;
+      stroke-width: 0.6;
+      vector-effect: non-scaling-stroke;
+    }
+    .personBody {
+      stroke: #173947;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+    }
+    .settlementLabel {
+      fill: #24333b;
+      font-size: 10px;
+      text-anchor: middle;
+      paint-order: stroke;
+      stroke: rgba(255,255,255,0.82);
+      stroke-width: 3px;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
     .parish {
       stroke: #34444d;
       stroke-width: 0.7;
@@ -183,6 +231,8 @@
       <div class="legendRow"><span class="swatch" style="background:#dce8dc"></span>Very Low exposure</div>
       <div class="legendRow"><span class="swatch" style="background:#1f6f8b"></span>Observed track</div>
       <div class="legendRow"><span class="swatch" style="background:#ad2f45"></span>Forecast track</div>
+      <div class="legendRow"><span class="swatch" style="background:#f6e7c8"></span>Settlements / homes</div>
+      <div class="legendRow"><span class="swatch" style="background:#2f5f73"></span>People / shelters</div>
     </div>
     <div class="meta">The forecast is a simple trend model for research visualization, not an official meteorological forecast.</div>
   </aside>
@@ -204,6 +254,15 @@ const PAD = 70;
 let timer = null;
 
 const forecastFocus = forecast.filter(d => d.lat <= 21.8 && d.lon >= -76.4);
+const settlements = [
+  {name: "Montego Bay", lon: -77.92, lat: 18.47, houses: 3, people: 2},
+  {name: "Savanna-la-Mar", lon: -78.13, lat: 18.22, houses: 3, people: 2},
+  {name: "Black River", lon: -77.85, lat: 18.03, houses: 2, people: 2},
+  {name: "Mandeville", lon: -77.50, lat: 18.03, houses: 3, people: 3},
+  {name: "Spanish Town", lon: -76.95, lat: 17.99, houses: 2, people: 3},
+  {name: "Kingston", lon: -76.79, lat: 17.98, houses: 4, people: 4},
+  {name: "Port Antonio", lon: -76.45, lat: 18.18, houses: 2, people: 2}
+];
 const allPoints = observed.concat(forecastFocus).map(d => [d.lon, d.lat]);
 const polygonPoints = [];
 for (const f of impactGeojson.features) collectCoords(f.geometry.coordinates, polygonPoints);
@@ -267,6 +326,38 @@ function el(name, attrs = {}) {
   return node;
 }
 
+function group(attrs = {}) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  svg.appendChild(node);
+  return node;
+}
+
+function child(parent, name, attrs = {}) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  parent.appendChild(node);
+  return node;
+}
+
+function drawHouse(x, y, scale = 1) {
+  const g = group({transform: `translate(${x},${y}) scale(${scale})`});
+  child(g, "polygon", {points: "-8,0 0,-7 8,0", class: "houseRoof"});
+  child(g, "rect", {x: -6, y: 0, width: 12, height: 9, rx: 1, class: "houseBody"});
+  child(g, "rect", {x: -1.8, y: 3, width: 3.6, height: 6, fill: "#8b6b4e"});
+  return g;
+}
+
+function drawPerson(x, y, scale = 1) {
+  const g = group({transform: `translate(${x},${y}) scale(${scale})`});
+  child(g, "circle", {cx: 0, cy: -5, r: 3, class: "personHead"});
+  child(g, "line", {x1: 0, y1: -1, x2: 0, y2: 7, class: "personBody"});
+  child(g, "line", {x1: -5, y1: 2, x2: 5, y2: 2, class: "personBody"});
+  child(g, "line", {x1: 0, y1: 7, x2: -4, y2: 13, class: "personBody"});
+  child(g, "line", {x1: 0, y1: 7, x2: 4, y2: 13, class: "personBody"});
+  return g;
+}
+
 el("rect", {x: 0, y: 0, width: W, height: H, fill: "#d9ecf2"});
 
 const [caribbeanX, caribbeanY] = project(-77.2, 17.05);
@@ -285,6 +376,18 @@ for (const feature of impactGeojson.features) {
     fill: colorFor(score),
     opacity: "0.88"
   });
+}
+
+for (const place of settlements) {
+  const [baseX, baseY] = project(place.lon, place.lat);
+  for (let i = 0; i < place.houses; i++) {
+    drawHouse(baseX + (i - place.houses / 2) * 15, baseY + 14 + (i % 2) * 7, 0.74);
+  }
+  for (let i = 0; i < place.people; i++) {
+    drawPerson(baseX + 18 + i * 9, baseY + 29, 0.45);
+  }
+  const text = el("text", {x: baseX, y: baseY - 8, class: "settlementLabel"});
+  text.textContent = place.name;
 }
 
 originBox.innerHTML = `
@@ -312,6 +415,9 @@ for (const f of forecastFocus) {
 }
 
 const halo = el("circle", {cx: 0, cy: 0, r: 20, class: "stormHalo"});
+const activeTrail = el("path", {d: "", class: "activeTrail"});
+const bandA = el("path", {d: "", class: "stormBand"});
+const bandB = el("path", {d: "", class: "stormBand"});
 const storm = el("circle", {cx: 0, cy: 0, r: 8, class: "stormPoint"});
 
 slider.max = observed.length - 1;
@@ -320,9 +426,14 @@ function update(idx) {
   const d = observed[idx];
   const [x, y] = project(d.lon, d.lat);
   const wind = Number(d.wind || 0);
+  const radius = Math.max(14, Math.min(58, wind / 2.7));
+  const angle = idx * 0.55;
   halo.setAttribute("cx", x);
   halo.setAttribute("cy", y);
-  halo.setAttribute("r", Math.max(14, Math.min(58, wind / 2.7)));
+  halo.setAttribute("r", radius);
+  activeTrail.setAttribute("d", pathFromPoints(observed.slice(0, idx + 1)));
+  bandA.setAttribute("d", spiralPath(x, y, radius * 0.18, radius * 0.88, angle));
+  bandB.setAttribute("d", spiralPath(x, y, radius * 0.18, radius * 0.88, angle + Math.PI));
   storm.setAttribute("cx", x);
   storm.setAttribute("cy", y);
   readout.innerHTML = `
@@ -332,6 +443,17 @@ function update(idx) {
     Status: ${d.status || "n/a"}
   `;
   slider.value = idx;
+}
+
+function spiralPath(cx, cy, inner, outer, angle) {
+  const points = [];
+  for (let i = 0; i <= 18; i++) {
+    const t = i / 18;
+    const r = inner + (outer - inner) * t;
+    const a = angle + t * Math.PI * 1.25;
+    points.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+  }
+  return points.map((pt, i) => `${i ? "L" : "M"}${pt[0].toFixed(1)},${pt[1].toFixed(1)}`).join(" ");
 }
 
 function step() {
