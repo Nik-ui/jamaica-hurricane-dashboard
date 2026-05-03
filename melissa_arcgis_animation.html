@@ -362,10 +362,12 @@ observedCallout.textContent = "Observed storm movement";
 if (forecastFocus.length) {
   const forecastCalloutAnchor = forecastFocus[Math.min(2, forecastFocus.length - 1)];
   const [fcCalloutX, fcCalloutY] = project(forecastCalloutAnchor.lon, forecastCalloutAnchor.lat);
-  const forecastCallout = el("text", {x: fcCalloutX - 120, y: fcCalloutY - 18, class: "trackCallout"});
-  forecastCallout.textContent = "48-hour model forecast track";
-  const forecastSub = el("text", {x: fcCalloutX - 120, y: fcCalloutY - 2, class: "trackCalloutSub"});
-  forecastSub.textContent = "dashed red line; not official";
+  const labelX = Math.max(28, Math.min(W - 250, fcCalloutX - 155));
+  const labelY = Math.max(34, fcCalloutY - 18);
+  const forecastCallout = el("text", {x: labelX, y: labelY, class: "trackCallout"});
+  forecastCallout.textContent = "Forecast track (model)";
+  const forecastSub = el("text", {x: labelX, y: labelY + 16, class: "trackCalloutSub"});
+  forecastSub.textContent = "dashed red; not official";
 }
 
 for (const f of forecastFocus) {
